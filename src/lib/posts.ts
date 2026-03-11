@@ -2,8 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { compileMDX } from 'next-mdx-remote/rsc';
+import rehypePrettyCode from 'rehype-pretty-code';
 
 const postsDirectory = path.join(process.cwd(), 'content/posts');
+const prettyCodeOptions = {
+  theme: 'one-dark-pro',
+  keepBackground: true,
+  onVisitLine(node: { children: Array<{ type: string; value?: string }> }) {
+    if (node.children.length === 0) {
+      node.children = [{ type: 'text', value: ' ' }];
+    }
+  },
+};
 
 export type PostFrontmatter = {
   title: string;
@@ -118,6 +128,9 @@ export async function getPostBySlug(slug: string) {
     source,
     options: {
       parseFrontmatter: true,
+      mdxOptions: {
+        rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+      },
     },
   });
 

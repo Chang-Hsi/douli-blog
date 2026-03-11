@@ -53,7 +53,7 @@ RESTful API，全名是Representational State Transfer Application Programming I
 * **逾時處理 (Timeout)**：如果服務器太久沒回應就自動中斷。
 * **攔截器 (Interceptors)**：這是最關鍵的設定！它能自動在每次前端發出 API 請求 時，把 session_id 從 Cookie ，或者把 token 從 Localstorage 抓出來塞進 在 Header 的 Authorization 欄位裡，並在收到後端回傳資料後，統一判斷「如果回傳狀態碼是 401（未授權），就自動登出並強制跳轉到登入頁」。
 
-```javascript
+```tsx showLineNumbers
 import axios from 'axios';
 
 // 1. 建立 axios 實例
@@ -136,7 +136,7 @@ export default service;
 
 在這個 js 裡，不寫任何邏輯，只純粹定義「路徑」與「方法」。這是我認為最優雅的做法：
 
-```javascript
+```tsx showLineNumbers
 // src/apis/order.js
 import request from '@/utils/request';
 

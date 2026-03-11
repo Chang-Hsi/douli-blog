@@ -104,7 +104,7 @@ SessionStorage 是三者中最「短命」的。它的資料只存活在**當前
 登出的流程其實就是**「銷毀」**，且必須由前後端協力完成：
 
 1. **前端動作：** 清除 LocalStorage 裡的個人資料（讓畫面變回未登入狀態），例如執行 
-```
+```tsx showLineNumbers
 localStorage.removeItem('auth');
 ```
 2. **主動告知：** 前端發送一個登出 API 請求給伺服器。

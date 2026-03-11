@@ -6,8 +6,8 @@ import ThemeToggle from '@/components/shared/ThemeToggle';
 
 const navItems = [
   { href: '/posts', label: '文章列表' },
-  { href: '/tags', label: '分類' },
-  { href: '/recommended', label: '推薦閱讀' },
+  // { href: '/tags', label: '分類' },
+  { href: '/recommended', label: '作品集' },
   { href: '/about', label: '關於我' },
 ];
 
@@ -61,9 +61,9 @@ export default function Header() {
 
           <ThemeToggle />
 
-          <span className="ml-1 text-base text-zinc-400 dark:text-zinc-500">
+          {/* <span className="ml-1 text-base text-zinc-400 dark:text-zinc-500">
             English
-          </span>
+          </span> */}
         </div>
       </div>
     </header>

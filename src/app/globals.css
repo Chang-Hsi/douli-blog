@@ -134,4 +134,58 @@
   .prose :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *))::after {
     content: "" !important;
   }
+
+  .prose pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+
+  .prose [data-rehype-pretty-code-figure] {
+    margin: 1.5rem 0;
+  }
+
+  .prose [data-rehype-pretty-code-figure] pre {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid oklch(1 0 0 / 18%);
+    background-color: var(--shiki-dark-bg, #282c34);
+    color: var(--shiki-dark, #abb2bf);
+    padding: 1rem 0;
+  }
+
+  .prose [data-rehype-pretty-code-figure] code {
+    display: grid;
+    min-width: 100%;
+    font-size: 0.92rem;
+  }
+
+  .prose [data-rehype-pretty-code-figure] [data-line] {
+    display: block;
+    padding: 0 1rem;
+  }
+
+  .prose [data-rehype-pretty-code-figure] [data-highlighted-line] {
+    background: oklch(1 0 0 / 10%);
+  }
+
+  .prose [data-rehype-pretty-code-figure] [data-highlighted-chars] {
+    border-radius: 0.35rem;
+    background: oklch(1 0 0 / 14%);
+    padding: 0.15rem 0.25rem;
+  }
+
+  .prose [data-rehype-pretty-code-figure] [data-line-numbers] {
+    counter-reset: line;
+  }
+
+  .prose [data-rehype-pretty-code-figure] [data-line-numbers] > [data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 2rem;
+    margin-right: 1rem;
+    text-align: right;
+    color: oklch(0.72 0 0);
+  }
 }
