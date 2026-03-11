@@ -1,0 +1,97 @@
+---
+title: "從 Vue 轉到 React 的心得感想"
+date: "2026-03-01"
+description: ""
+tags: ["Vue", "React", "AI"]
+slug: "hello-react"
+draft: false
+---
+其實有很長一段時間，我一直以為前端就是 Vue，那時候我理所當然的覺得，前端代碼就應該由 `<template />`、`<script setup>`、`<style />` 組成。分別代表結構、邏輯、外觀，看！這結構是多麼的簡潔又合理！
+
+雖然工作中我也寫過 Swift，但我堅信 iOS 或 Android 這種原生代碼都是怪胎，他們連編譯器都要用自家開發的，所以組件結構長得奇怪合情合理。然而，最近因為求職上的需求，所以開始學習寫 React，零零總總學了一些東西，也用 React 跟 Typescript 寫了幾個專案，因此這邊就簡單寫一篇來分享。
+## 開始之前...
+
+想先讚美一下 **Gemini 3**，他是我遇過最棒的 1 對 1 家庭教師，真的就是手把手教我 React 的各種概念跟機制，比如 useState 這個 React 用戶用到手冒煙的 hook，我的理解是他功能類似於 Vue 的 ref, reactive，但是難用很多，類似「自排車」切到「手排車」那種蛋疼感。
+
+他的核心運作方式是宣告一個包含兩個值 (當前的狀態值、更新狀態的函式) 的陣列，使用 hook，在需要的地方用那個 hook 去更新狀態值。
+
+**舉例來說：**
+
+```javascript
+const [count, setCount] = useState(0); // 0 是初始值
+const handleAdd = () => { setCount(count++) }
+```
+
+而在 Vue 中，只需要這樣：
+
+```javascript
+const count = ref(1)
+const handleAdd = () => { count++ }
+```
+
+看到這裡的觀眾請誠實的告訴我，你覺得哪個比較簡單 (笑)？
+
+在我還沒有完全理解之前，我內心一直不斷尖叫，怎麼這麼麻煩？為什麼宣告一個狀態會需要用到陣列？還要透過 **setCount** 更新值？沒有可愛的雙向數據綁定可以用嗎？ 還好有 Gemini 反覆提醒要怎麼做，為什麼這麼做，加上我有點不服輸的特性，才將自排轉手排這段陣痛期熬過去。
+
+## 為什麼要從 Vue 轉到 React
+
+> 「凡是過去，皆為序章。」
+
+因為工作的關係，我學會了 Vue，甚至我可以自誇上一句，我學得還不錯，然而這不代表我應該就此止步，說到底，React 的職缺與薪資在 2026 年依然佔有絕對優勢。
+
+根據統計，React 與 Vue 的職缺比例約為 **7:1**。實際在 104 上看到的前端工程師求職比例中，React 也佔據絕對多數，因此趁著現在有時間，休息之餘學習 React，我認為是必須的。
+
+現在 AI 發展的勢頭如火如荼，有些人評論，現在想從事軟體這行，從打基礎開始學習 React 之類的框架不合時宜，因為 AI 比我們更聰明，推算速度比我們更快，甚至學習的速度也比我們快等，所以程序員更應該去學 **Vide Coding** 的技巧，**Harness Engineering** 的技巧。
+
+
+<span>
+  <strong> 來源：</strong>{' '}
+  <a
+    href="https://openai.com/zh-Hant/index/harness-engineering/"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-1 text-blue-600 hover:underline"
+  >
+    Harness Engineering
+    <span aria-hidden="true">↗</span>
+  </a>
+</span>
+
+也許有一天，他們的說法會是正確的，就像很久以前有人提過，有一天編程可以用自然語言取代程式。但是就目前而言，在我看來，只會 Vide Coding 卻缺乏知識面，也拒絕學習基礎知識，是不可行的。
+
+理由很簡單，今天 AI 教你如何創建專案，甚至直接代替你創建專案，幫你安裝插件，幫你設計專案骨架，Router，填充 Layout，寫外觀與畫面，操作邏輯，甚至寫好以後幫你測試、部署、上版，這些 AI 全部都能做到 (筆者親自實驗)。
+
+是的，你的 APP 跑起來了，也運行得很順利，但是專案是需要維運的，當 APP 遇到錯誤，或者客戶有需求調整時，這個案子本質上是 AI 寫的，所以你真的知道他是如何運行的嗎？你知道要如何除錯嗎？Code Review 時，有人要你解釋這段代碼的功能時，你能說得出口嗎？如果你連 `useState` 是什麼都不知道，你要如何指望自己能看懂代碼在做什麼呢？
+
+所以，不可以停止學習，就算真的要做 Harness Engineering，其前提也是自己需要能睜著眼睛。不小心講起大道理，讓我們回歸正題。
+
+## 從 Vue 轉到 React 的心得感想
+
+說實話，學習 React 的這段期間，我打從心底覺得以前真是身在福中不知福。
+
+在 Vue 裡，有很多語法糖，`v-model` 這種雙向數據綁定就不說了，想要給畫面加個判斷，讓他某些條件下顯示/不顯示，在 Vue 的框架下，直接在 `<div>` 裡加 `v-if` 就好，但在 React 則是要用 `return <div>...</div>`，或者用 `&&` 或三元運算符實現。
+
+迴圈的部分，Vue 有 `v-for`，React 是用 `.map()`，在這部分我倒是覺得還能接受，可能是因為 Vue 我也會在 function 中寫 `.map` 的關係，要熟悉起來不難。
+
+但是這裡面也有一個坑，我不能在 map 裡面的按鈕直接寫 `onClick={handleClick()}`，因為 `handleClick` 通常會做 `useState()`，當兩種情形同時存在時，重新渲染機制會教你什麼叫做無窮迴圈，必須要寫 `onClick={(()=>handleClick())}`，才可以保證不報錯，而這個錯誤我已經犯了好幾次了 (眼神死)。
+
+<img
+  src="/images/infiniteloop.webp"
+  alt="無窮迴圈"
+  width="600"
+/>
+
+在 Vue 中，`watch` 或 `computed` 幾乎是自動追蹤依賴，事實上，在學習 `useEffect` 之前，我甚至沒有太關注 `watch` 或 `computed` 的本質，我的認知就是，有 hook 可以追蹤與監控狀態值的變化天經地義，是的，又是一個被 Vue 寵壞的案例。
+
+React 的 `useEffect` 會要求你顯式地聲明所有依賴，不可以聲明一個 `(newValue)` 就不去管它，不過有意思的是，我不認為這是一件壞事。
+
+以前我幫一個同事 code review 時有發現他某個功能時好時壞，難以追蹤問題，後來定位追蹤，發現他在 script 中針對同一個狀態值，在不同的位置添加很多次 `watch`，又因為組件複雜，導致在特定情形，短時間內有機率多個 `watch` 被觸發，`watch` 到的結果不同。
+
+簡單來說就是，第一次 `watch` 到正確結果時會做相應處理，這在 DevTool 看得一清二楚，但立刻被下一個 `watch` 刷新變更為錯誤結果。所以，也許 `useEffect` 這種要求開發者聲明依賴，迫使開發者思考資料流的連鎖反應的做法，對專案完整度來說是一件好事。
+
+## 總結
+
+以上就是我從 Vue 轉到 React 的心得感想，總得來說，學習新知識的適應期的確讓人疲憊，尤其是知道已經存在更好的框架時，更尤其對該框架還很熟悉時，不過當代碼經過 Render tree 渲染在畫面上，看到辛苦打出來的程式順利運行時螢幕上時，這種辛苦得到回報的感覺...
+<span className="text-center text-4xl font-extrabold text-black">
+你們後端工程師一定不理解吧 (笑)
+</span>

@@ -1,0 +1,170 @@
+---
+title: "淺談 Restful API 與我的實務開發經驗"
+date: "2026-02-12"
+description: ""
+tags: ["Restful API"]
+slug: "restful-api"
+draft: false
+---
+## 前言
+
+RESTful API，全名是Representational State Transfer Application Programming Interface，用中文翻譯過來大概是『表現層狀態值移轉應用程式編程介面』。是不是聽不懂，沒關係，那我換個，『具象狀態傳輸應用程式編程介面』，還是不理解？那就記住它簡單的定義就好：
+
+> 透過簡單的資料格式，在前後端傳輸資料變更狀態的設計風格。
+
+我們可以從名詞的縮寫理解他的定義：
+
+* **RE: Representational** 可具象化的，表現層的，也就是資料呈現的型態，通常是 JSON/XML。
+* **ST: State Transfer** 狀態轉移，也就是透過發出請求，資料轉移的方式讓狀態發生變更，比如發出登入請求將狀態從未登入變成已登入。
+
+## 理解定義
+
+我們要明確認知到一件事， RESTful API 並不是一個 Protocol（通訊協定）或標準，他是一個讓網路服務變得輕量、簡單、具備格式的『設計風格』
+
+真正要理解 RESTful API ，我們需要了解它的三個大原則：
+
+1. **使用 URL 來表示資源**，因此 URL 要求要用名詞命名
+2. **使用 Method 來表示動作**：
+* **GET**: 獲取資料
+* **POST**: 新增資料
+* **PUT**: 更新資料
+* **DELETE**: 刪除資料
+* **PATCH**: 局部更新，比如資料的啟用狀態更新。
+
+
+3. **無狀態(Stateless)**：服務器不會記錄上次API的狀態(比如 session_id)，每次API 發出請求都是一次獨立的請求，所以每次都需要夾帶 session_id，
+
+## 為什麼 RESTful API 是主流？
+
+主要原因是這種設計風格是現行API中最規範，最簡潔的。而且後端只需要回傳JSON，前端無論是使用 Web, iOS, Adroid 都可以接收JSON格式的資料並做對應處理，這在行動裝置普及的年代至關重要。
+
+## 實務上如何使用？
+
+這也是許多人好奇的，網路上有無數文章、影片已經對 RESTful API 進行解釋說明，但我發現比較少人對『如何在專案中串接API』做說明，這也是我今天想寫這篇文章的主因。
+在開發大型專案時，我們不會在每個 Vue 或 React 元件裡散亂地寫 `axios.get('/api/order')`。想像一下，如果哪天後端要把所有的網址路徑從 /api/v1 改成 /api/v2，難道要翻遍全專案幾百個檔案去手動修改嗎？
+
+因此，在實務開發中，我們通常會採取 「中心化管理」 的策略，將 API 串接拆解為兩個層次：
+
+### 1. 打造共用元件（Request Helper）
+
+我們會先封裝一個統一的連線工具（例如 `src/utils/request.js`）。它的作用就像是工廠的標準車間，負責處理所有 API 共同的雜事：
+
+* **基礎路徑 (Base URL)**：統一設定後端 Base URL，實務上通常會進一步的使用環境變數以根據不同的環境(dev, sit, uat, prd)進行轉換。
+* **逾時處理 (Timeout)**：如果服務器太久沒回應就自動中斷。
+* **攔截器 (Interceptors)**：這是最關鍵的設定！它能自動在每次前端發出 API 請求 時，把 session_id 從 Cookie ，或者把 token 從 Localstorage 抓出來塞進 在 Header 的 Authorization 欄位裡，並在收到後端回傳資料後，統一判斷「如果回傳狀態碼是 401（未授權），就自動登出並強制跳轉到登入頁」。
+
+```javascript
+import axios from 'axios';
+
+// 1. 建立 axios 實例
+const service = axios.create({
+  // 根據環境變數自動切換 Base URL
+  // 例如：dev 環境可能是 http://localhost:3000，prd 環境是 https://api.yourdomain.com
+  baseURL: process.env.VUE_APP_BASE_API || '/api', 
+  
+  // 2. 逾時處理：超過 5 秒未回應則中斷請求
+  timeout: 5000 
+});
+
+// 3. 請求攔截器 (Request Interceptor)
+service.interceptors.request.use(
+  config => {
+    // 在發送請求前，從 LocalStorage 抓取 Token
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      // 依照 RESTful 規範，將 Token 塞入 Header 的 Authorization 欄位
+      // 格式通常為 'Bearer <token>'
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return config;
+  },
+  error => {
+    // 請求錯誤處理
+    console.error('請求發送失敗：', error);
+    return Promise.reject(error);
+  }
+);
+
+// 4. 回應攔截器 (Response Interceptor)
+service.interceptors.response.use(
+  response => {
+    // 只回傳後端真正的資料部分 (data)
+    // 這樣你在 apis/order.js 拿到的直接就是 JSON 內容
+    const res = response.data;
+    
+    // 這裡可以根據公司內部的狀態碼規範做統一處理
+    if (res.code !== 200 && res.status !== 'success') {
+      // 可以在這裡統一跳出錯誤通知 (如：ElementUI 的 Message)
+      alert(res.message || '發生錯誤');
+      return Promise.reject(new Error(res.message || 'Error'));
+    }
+    
+    return res;
+  },
+  error => {
+    // 統一處理 HTTP 狀態碼錯誤
+    if (error.response) {
+      switch (error.response.status) {
+        case 401:
+          // 關鍵功能：統一判斷「未授權」，強制跳轉登入頁
+          alert('身份驗證已過期，請重新登入');
+          localStorage.removeItem('token'); // 清除過期 Token
+          window.location.href = '/login';   // 強制跳轉
+          break;
+        case 404:
+          console.error('找不到請求的路徑');
+          break;
+        case 500:
+          console.error('伺服器內部錯誤');
+          break;
+        default:
+          console.error('其他連線錯誤：', error.message);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default service;
+```
+
+### 2. 定義模組化 API 清單（src/apis/xxxApi.js）
+
+統一車間設置完成後，我們會針對不同的功能模組建立專屬的檔案，例如 `auth.js` 專門設定登入登出的 API 請求、`order.js` 專門設定訂單的 API 請求等。
+
+在這個 js 裡，不寫任何邏輯，只純粹定義「路徑」與「方法」。這是我認為最優雅的做法：
+
+```javascript
+// src/apis/order.js
+import request from '@/utils/request';
+
+// 獲取訂單資料 (GET)
+export const getOrderInfo = (params) => {
+    return request({
+        url: '/order/info',
+        method: 'GET',
+        params // 對應 RESTful 的查詢參數, 例如limit, offset
+    });
+};
+
+// 修改訂單啟用 (PATCH)
+export const toggleOrderStatus = (data) => {
+    return request({
+        url: '/order/status',
+        method: 'PATCH',
+        data // 傳送 JSON 格式的變更資料
+    });
+};
+```
+
+#### 這種做法的好處是什麼？
+
+* **一目瞭然的清單**： 當新同事加入專案，他只要打開 `order.js`，就像看菜單一樣，立刻知道這個功能模組支援哪些行為，不需要去爬程式碼邏輯。
+* **資料格式的規範化**： 透過這種方式，我們可以強迫前端在傳送資料（JSON data）時，必須符合後端定義的名詞規範，減少溝通成本。
+* **極高的維護性**： 所有的 URL 路徑都集中在這裡。當後端調整路徑或是變更 Method 時，我們只需要在這裡改一行字，全專案的連線就跟著同步更新了。
+
+## 結語
+
+RESTful API 不僅僅是網址上的 /GET 或 /POST，它代表的是一種「秩序」。透過規範化的命名與結構化的代碼管理，我們能讓雜亂無章的資料傳輸變得像生產線一樣高效且穩定。

@@ -4,8 +4,14 @@
 1. 建立 Next.js App Router 專案
 2. 建立 `content/posts` 文章目錄
 3. 先做全站骨架 -> 做各路由 placeholder page -> 建立首頁、`/about`、`/posts/[slug]` 路由
+4. 加入深色模式
 4. 設定 static export（靜態輸出）
 5. 建立一篇測試文章，確認文章頁可正常顯示
+   - 建立 content/posts
+   - 建立第一篇測試文章
+   - 寫文章讀取函式
+   - 首頁顯示文章列表
+   - /posts/[slug] 顯示文章內容
 
 ### 階段二：文章系統
 1. 建立 Markdown / MDX 文章讀取機制
@@ -30,7 +36,7 @@
 
 ### 階段五：UI 與部署
 1. 調整整體版型與排版風格
-2. 加入深色模式
+2. 加入 en
 3. 補齊 favicon、OG image 等網站素材
 4. 部署到 Vercel
 5. 規劃 GitHub Pages 部署相容設定

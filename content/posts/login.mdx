@@ -1,0 +1,112 @@
+---
+title: "淺談Cookie、LocalStorage、SessionStorage的機制"
+date: "2026-02-14"
+description: ""
+tags: ["Cookie", "LocalStorage", "SessionStorage"]
+slug: "login-logout"
+draft: false
+---
+
+## 前言
+
+眾所週知，有三套作法可以將資料相對持久化的保存在前端，準確來說是將其保存在瀏覽器裡面，分別是 Cookie、LocalStorage，以及SessionStorage。本文旨在探討當前這三套機制的主要作法，流程，以及為什麼要這樣做。並且舉一個登入登出的實際範例，分享實務開發上的心得。
+
+## 正文
+### 1. Cookie：它是你的「身分通行證」
+
+在實務運作中，Cookie 是唯一具備「自動通訊」能力的儲存機制。當伺服器發出一張 Cookie 給瀏覽器後，以後每一次你對該伺服器發出的 HTTP 請求，瀏覽器都會自動地、默默地在 Header 裡帶上這張 Cookie。
+
+這種特性讓它成為**身分驗證（Authentication）**的不二人選。開發者會將加密後的 Session ID 或 JWT 放在裡面，並加上特殊的防護鎖（如 HttpOnly 讓 JavaScript 無法偷取、Secure 確保只在加密連線傳輸）。簡單來說，只要涉及「我是誰」這種敏感的安全議題，實務上幾乎都會回歸到 Cookie 的懷幫。
+
+### 2. LocalStorage：它是你的「個人偏好保險箱」
+
+LocalStorage 與 Cookie 最大的不同在於，它儲存的東西不會自動傳給伺服器，而且它的空間大得多（通常有 5MB）。
+
+在實務運用上，它扮演的是「優化使用者體驗」的角色。例如，當使用者把網站切換成「深色模式」，或是調整了側邊欄的寬度，我們會把這些不具敏感性、但需要**長期**記住的設定存在這裡。這樣下次使用者打開網頁時，JS 就能立刻從 LocalStorage 讀取設定並套用，不需要去詢問伺服器，讓操作感受更流暢。
+
+### 3. SessionStorage：它是你的「分頁專屬筆記本」
+
+SessionStorage 是三者中最「短命」的。它的資料只存活在**當前的分頁**裡。一旦把分頁關掉，裡面的東西就煙消雲散；即使你開兩個分頁連到同一個網站，它們的 SessionStorage 也是互不相通的。
+
+實務上，我們常用它來處理「一次性」的流程。最經典的案例就是多步驟表單：當使用者在填寫第一頁、第二頁時，我們可以暫時把資料存在這裡，防止他如果不小心點到重新整理，好不容易填好的資料會全部消失。它就像是一本隨手筆記，任務結束就直接進碎紙機。
+
+---
+
+## 實務流程
+
+這裡我們以目前最安全、也最主流的 「HttpOnly Cookie + Session/Token」 流程為例：
+
+**第一步：**
+使用者在前端登入畫面中輸入帳號與密碼並按下「登入」鈕時，前端會發起一個 POST 請求，將帳密透過加密連線（HTTPS）傳送給後端。
+
+> 細節： 此時瀏覽器的 LocalStorage 或 Cookie 裡面都還沒有任何關於這次身分的資料。
+
+**第二步：**
+後端收到前端發出的帳號與密碼以後，會去資料庫做比對。如果資料庫中確實存在該資料，後端會準備一份「身分證明」，具體來說，後端當下會產生一個隨機的 Session ID，或是加密的 JWT Token。然後伺服器在 Response Header 裡加上一筆指令：
+
+> Set-Cookie: session_id=550e8400-e29b-41d4-a716-446655440000;
+> HttpOnly;
+> Secure。
+
+翻譯成白話就是： 服務器告訴**瀏覽器**：「請幫我把這張通行證鎖進你的 Cookie 櫃子裡，而且不准 JavaScript 碰它（HttpOnly）。」
+
+**第三步：**
+前端接收到回傳資料，領取以後鎖上，這是關鍵的一步，因為前端開發者通常不需要寫任何程式碼來處理這個 Cookie，當瀏覽器收到回應後，看到 Set-Cookie 指令，會自動把這段資訊存入 Cookie 中。
+
+前端流程： 雖然 Javascript 拿不到 Cookie（也不可以給他拿到），但前端通常會從後端回傳的 JSON 內容裡（例如 `{ "userName": "Gemini", "avatar": "..." }`），把這些不敏感的個人資料存入 LocalStorage。
+
+存入 LocalStorage 的目的是為了讓網頁重新整理後，用戶依然保持登入的狀態。
+
+**Google 登入成功回傳範例 (JSON)**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "id": "google-oauth2|103456789012345678901",
+      "email": "gemini.ai@gmail.com",
+      "email_verified": true,
+      "name": "Gemini AI",
+      "firstName": "Gemini",
+      "lastName": "AI",
+      "avatar": "https://lh3.googleusercontent.com/a/ACg8ocL...s96-c",
+      "locale": "zh-TW"
+    },
+    "auth": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expiresIn": 3600,
+      "tokenType": "Bearer"
+    }
+  },
+  "message": "Login successful"
+}
+```
+
+**第四步：**
+有沒有發現，很多網站在執行提供的服務之前，都會要你先登入，這是因為他們的服務有設定，用戶想執行某些行為，進到某些頁面時，必須具備登入狀態。比如購物網站，想要將商品加入到購物車，必須登入才行。
+
+具體的行為如下：
+前端發起請求，比如點擊加入購物車，實際上等同前端發送一個 API 請求，**瀏覽器**發現這個請求的網域跟剛才存 Cookie 的網域一樣，它就會自動把那張 session_id 塞進 Request Header 裡寄出去。
+後端接到請求，看到 API 請求中的 Header 裡的 Cookie，比對一下資料庫，確認「喔！是 abc123，他是本人無誤」，於是讓這項請求通過。
+
+> 具體來說，後端驗證了這張通行證後，會將這筆商品與資料庫中該用戶的帳號進行關聯存檔，成功完成這一次的授權操作。
+
+<img
+  src="/images/login.png"
+  alt="登入登出"
+  width="600"
+/>
+---
+
+## 登出又是怎麼回事？
+
+登出的流程其實就是**「銷毀」**，且必須由前後端協力完成：
+
+1. **前端動作：** 清除 LocalStorage 裡的個人資料（讓畫面變回未登入狀態），例如執行 
+```
+localStorage.removeItem('auth');
+```
+2. **主動告知：** 前端發送一個登出 API 請求給伺服器。
+3. **後端收尾：** 伺服器收到請求後，在資料庫註銷該 ID，並回傳指令告訴瀏覽器：`Set-Cookie: session_id=; Expires=Thu, 01 Jan 1970 00:00:00 GMT`。
+4. **最終結果：** 瀏覽器看到過期的日期，就會自動將 Cookie 從櫃子裡移除。至此，無論是前端的「緩存」還是後端的「通行證」都已徹底消失。
