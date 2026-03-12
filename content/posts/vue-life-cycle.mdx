@@ -1,0 +1,86 @@
+---
+title: "淺談 Vue 的生命週期"
+date: "2024-10-24"
+description: "探索 Vue 組件從出生到銷毀的各個階段，掌握 Hooks 的最佳使用時機。"
+tags: ["Vue", "生命週期", "hook"]
+slug: "vue-life-cycle"
+draft: false
+---
+
+## 前言
+
+Vue 的組件，從**出生到死亡**，會經過一系列的階段，就像生物的生老病死一樣。在這一段從生到死，用程式角度來說，從組件加載到組件卸載的期間，Vue 框架提供了一些可以被觸發的 **Hooks**。
+
+透過 Hooks，開發者可以在特定的時間點執行對應的程式碼。舉個實際的例子，我們可以在 **`onMounted`**，也就是組件加載 (出生) 時，呼叫執行 API 的方法，跟後端請求該頁所需的資料。
+
+```tsx showLineNumbers
+import { ref, onMounted } from 'vue'
+
+const data = ref(null)
+
+onMounted(async () => {
+  // 組件掛載後，立即向後端請求資料
+  const response = await fetch('api/v1/users')
+  data.value = await response.json()
+})
+
+```
+
+---
+
+## 生命週期的階段
+
+我們可以將 Vue 的整個生命週期分為四個主要階段：
+
+### 1. 建立階段 (Creation)
+
+這是組件生命週期的起點，是在 **Vue 組件加載完成 ~ 組件 DOM 元素尚未掛載到網頁上**的階段，可以理解為藍圖已經完成了，但是資料都尚未初始化。
+
+Vue 3 Composition API 早期是需要手動寫出 `setup() { ... return { ... } }`：
+
+```tsx showLineNumbers
+export default {
+  setup() {
+    const count = ref(0)
+    return { count }
+  }
+}
+
+```
+
+後來經過優化，變成 **`<script setup>`** 這種語法糖，其實就是在編譯階段，自動把裡面的程式碼包進一個名為 `setup()` 的函數。
+
+```tsx showLineNumbers
+<script setup>
+import { ref } from 'vue'
+const count = ref(0)
+</script>
+
+```
+
+### 2. 掛載階段 (Mounting)
+
+Mounting 是「**將虛擬 DOM 轉換為真實 DOM，並插入到網頁瀏覽器中**」的生命階段，而這又能夠依照 DOM 掛載前與掛載後，分為：
+
+* **`onBeforeMount`**：這是在組件被掛載到 DOM 之前，最後一個會在瀏覽器端執行的鉤子。在實務開發上很少使用它。筆者想了很久，也只記得寥寥幾次，因為需要用到全域變數，例如 `window.CONFIG` 時，有使用到 `onBeforeMount`。
+* **`onMounted`**：DOM 掛載完成以後做的第一件事。這是 **Vue 生命週期中最常用的 Hook**，通常在這裡操作進入該頁後要做的第一件事，舉例來說，一進入該頁就使用 `route.query` 獲取本頁的網址路徑，或如同前面舉的例子，呼叫 **AJAX 請求**，等同 React 的 `useEffect(..., [])`。
+
+### 3. 更新階段 (Updating)
+
+當組件內部的資料（如 `ref` 或 `reactive`）發生變化，且需要**重新渲染畫面**時觸發。
+
+* **`onBeforeUpdate`**：在資料改變後，但 Vue 尚未開始更新真實 DOM 之前執行。實務上極少使用，唯一較常見的場景是需要在 DOM 更新前，手動獲取目前的滾動位置或元素狀態。
+* **`onUpdated`**：當資料改變導致的 DOM 重新渲染完成後執行。若你有某些邏輯必須確保在「**畫面已經更新完畢**」後才執行，比如說重新計算第三方圖表套件的寬度高度就會寫在這裡。但須注意，在此 Hook 中修改資料可能會導致**無限循環更新**。
+
+### 4. 銷毀階段 (Unmounting)
+
+當組件卸載時，可以添加這些 Hook，在 Hook 中指定執行特定任務。舉例來說，我們應該在組件卸載時，有必要移除那些不隨組件消失而自動停止的行為，以避免造成 **記憶體洩漏 (Memory Leak)**。這能夠依照組件完全卸載前與卸載後，分為：
+
+* **`onBeforeUnmount`**：組件卸載之前執行的 Hook，通常實務開發上不太會用這個 Hook，我們一般習慣寫在 `onUnmounted`。
+* **`onUnmounted`**：組件完全消失後執行的 Hook，適合用來**清除一直在背景跑的程式**，例如定時器 (Timer)、全域事件監聽 (Event Listener)，或關閉 WebSocket 連線通道等。
+
+---
+
+## 總結
+
+看到這邊的讀者，是否理解 Vue 生命週期 Hooks 的好處了呢？他不只是準備面試時的理論題，在實務開發上，我們開發者是需要與生命週期的 Hook **頻繁打交道**的。掌握他們，開發者才能知道 **「什麼時候做什麼事情最合適」**。

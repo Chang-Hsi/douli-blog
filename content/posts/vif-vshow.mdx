@@ -1,0 +1,118 @@
+---
+title: "淺談 Vue 的 v-if 與 v-show 的不同"
+date: "2024-09-11"
+description: ""
+tags: ["Vue", "v-if", "v-show"]
+slug: "vif-vshow"
+draft: false
+---
+
+## 前言
+
+繼上次談論容易搞混的 watch 與 computed 後，我們來談談 v-if 與 v-show。
+
+## 兩者的區別
+
+v-if ，是依據條件來決定是否渲染某個元素。或者換種說法，v-if 是根據條件，將已經做好了 Render tree，DOM 掛載到網頁上的某個元素刪除的一種機制。當條件為 false 時，Vue 會直接將對應的 DOM 從頁面中移除；當條件變為 true 時，Vue 又會重新建立該元素。
+
+v-show 的功能則是控制元素的顯示與隱藏，元素本身其實始終存在於 DOM 中沒有被刪除，只是當條件為 false 時，Vue 透過 CSS 的 display:none ，將該元素給隱藏起來而已。
+
+來源:  
+[Vue.js文件](https://vuejs.org/guide/essentials/conditional.html)
+
+```vue showLineNumbers
+<template>
+  <button @click="isVisible = !isVisible">切換顯示</button>
+
+  <p v-if="isVisible">這段文字使用 v-if 控制</p>
+
+  <p v-show="isVisible">這段文字使用 v-show 控制</p>
+</template>
+
+<script setup>
+import { ref } from "vue"
+
+const isVisible = ref(true)
+</script>
+```
+
+按下按鈕，切換 isVisible 的值。
+
+當 isVisible 為 false 時， v-if 的元素會直接從 DOM 中被移除；當 isVisible 再次變為 true 時，Vue 會重新建立這個 DOM 元素。
+
+而使用 v-show 的元素則不同。當 isVisible 為 false 時，該元素仍然存在於 DOM 中，只是被加上 display:none 的樣式來隱藏，因此並不會重新建立或銷毀 DOM。
+
+因此我們可以簡單得出一個結論，v-if 與 v-show 的差異主要體現在 DOM 的建立與銷毀成本上：
+
+v-if 會在條件變化時建立或銷毀 DOM，因此適合用在不常需要頻繁切換出現/消失的場景，例如權限控制、登入狀態顯示頭像、錯誤頁面、資料為空時顯示空資料的畫面等等。
+
+v-show 則只是單純控制顯示與隱藏，因此比較適合用在需要頻繁切換的場景，例如下拉選單、tab 切換、modal 視窗等。
+
+## 兩者的共同點
+
+這裡需要提到一個對前端開發者來說很重要的觀念，佔位與空間釋放。
+
+當我們在討論「消失」時，最擔心的通常是：
+
+如果這個元素不見了，原本它佔據的那塊白框，會縮起來讓後面的元素補上？還是會留下一塊空白？
+
+> 在 CSS 的世界裡，這取決於元素是否還存在於文檔流之中。
+
+### 1. v-if：徹底釋放空間
+
+由於 v-if 是直接將 DOM 節點從 Render Tree 中拔除，對瀏覽器來說，那個位置就好像從來沒有東西一樣。
+
+結論：原本在它下方的元素會自動補位向上移動。
+
+### 2. v-show：依然佔位嗎？
+
+這是一個常見的誤區。雖然 v-show 是透過 display: none 來隱藏，但 display: none 在 CSS 中的特性是「不渲染且不佔用空間」。
+
+結論：即使是 v-show，當條件為 false 時，原本的 id=2 空間同樣會縮起來，id=3 依然會補位上去。
+
+> 重點：在補位這點上，v-if 與 v-show 的行為是一致的。
+
+補充：如果你真的想要留白怎麼辦？
+
+如果你希望某塊 div 消失，但同時又希望能讓該空間被佔位，不讓其他元素填進來，維持原本的間距，那不能依靠 v-if / v-show，而是要手動控制 visibility 屬性：
+
+```vue showLineNumbers
+<div :style="{ visibility: isVisible ? 'visible' : 'hidden' }">
+  ID = 2
+</div>
+```
+
+## 總結
+
+所以我們可以做個表格，為這次文章做個總結：
+
+<table>
+  <thead>
+    <tr>
+      <th>方式</th>
+      <th>DOM 存在</th>
+      <th>佔據空間</th>
+      <th>補位發生</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>v-if="false"</td>
+      <td>否</td>
+      <td>否</td>
+      <td>是</td>
+    </tr>
+    <tr>
+      <td>v-show="false"</td>
+      <td>是</td>
+      <td>否</td>
+      <td>是</td>
+    </tr>
+    <tr>
+      <td>visibility: hidden</td>
+      <td>是</td>
+      <td>是</td>
+      <td>否</td>
+    </tr>
+  </tbody>
+</table>

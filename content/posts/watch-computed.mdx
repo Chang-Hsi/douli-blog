@@ -1,0 +1,64 @@
+---
+title: "淺談 Vue 的 watch 與 computed 的不同"
+date: "2024-09-10"
+description: ""
+tags: ["Vue", "watch", "computed"]
+slug: "watch-computed"
+draft: false
+---
+
+## 前言
+
+Vue 的許多功能雖然方便，但有時候也挺容易讓人搞混的。比如 watch 跟 computed 的區別是什麼，讓寫 Vue 的開發者解釋，一時間還真不知道從哪裡說起。
+
+因此起了寫這篇文章的心思，這篇文章會從功能、是否有回傳值、實務常見用途三個面向，針對 watch 與 computed 的做解說。
+
+## 正文
+
+computed 的功能是基於既有狀態計算並回傳一個新值。當依賴的狀態發生變更時，computed 會在下次被存取時重新計算，並且具有快取機制。  
+watch 的功能則是針對某個狀態值進行監聽，一旦監聽狀態值變更，就去做相對應的處理，換句話說主要用於處理「副作用 (side effects)」。
+
+來源: [Vue.js - Computed Properties](https://vuejs.org/guide/essentials/computed.html)
+
+來源: [Vue.js - Watchers](https://vuejs.org/guide/essentials/watchers.html)
+
+讓我們直接用代碼來說明：
+
+```vue showLineNumbers
+<template>
+  <p>單價: {{ price }}</p>
+  <p>數量: {{ quantity }}</p>
+
+  <button @click="quantity++">增加數量</button>
+  <p>總價格: {{ totalPrice }}</p>
+  <input v-model="keyword" placeholder="輸入搜尋關鍵字"/>
+</template>
+
+<script setup>
+import { ref, computed, watch } from "vue"
+
+const price = ref(100)
+const quantity = ref(2)
+
+const totalPrice = computed(() => {
+  return price.value * quantity.value
+})
+
+const keyword = ref("")
+
+watch(keyword, (newValue) => {
+  if (newValue.length > 2) {
+    console.log("呼叫搜尋 API:", newValue)
+  }
+})
+</script>
+```
+
+在這個代碼中，點擊事件 @click="quantity++" 會直接讓 quantity 的值增加，觸發連鎖反應 => Vue 察覺到 totalPrice 的依賴狀態變了，因此重新執行計算行為，得出新的值 300，並且將其 return 出去。實務上，computed 多用於數值的計算，或者對資料進行過濾。
+
+這個代碼中，有設定 watch 並且對 keyword 進行監聽，因此，當使用者在 input 表單中輸入內容時，v-model 的雙向數據綁定，讓 js 中的 keyword 響應式變更。
+
+## 總結
+對 keyword 進行監聽的 watch 察覺到 keyword 的狀態值發生變更後，就會立刻執行相對應的副作用，但需注意，watch 通常不會用來計算新的資料，也不需要回傳值，而是用來處理狀態變更後的副作用。
+
+二者的功能是不同的。實務上，watch 多用於在某個狀態值發生後，去做對應處理。比如監聽 router.query 變更，從而執行 AJAX 請求，用新的 router.query 作為呼叫 API 的參數，以獲取新的資料。

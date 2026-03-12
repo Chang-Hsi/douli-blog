@@ -135,6 +135,23 @@
     content: "" !important;
   }
 
+  .prose :where(:not(pre) > code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    font-size: 1em;
+    font-weight: 400;
+    line-height: inherit;
+    border-radius: 0.4rem;
+    border: 1px solid oklch(0.9 0 0);
+    background: oklch(0.97 0 0);
+    color: oklch(0.46 0.12 255);
+    padding: 0.12em 0.42em;
+  }
+
+  .dark .prose :where(:not(pre) > code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    border-color: oklch(1 0 0 / 18%);
+    background: oklch(0.27 0 0);
+    color: oklch(0.83 0.09 255);
+  }
+
   .prose pre code {
     background: transparent;
     border: 0;

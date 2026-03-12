@@ -1,0 +1,92 @@
+---
+title: "淺談 Vue 的傳遞機制"
+date: "2024-09-12"
+description: ""
+tags: ["Vue", "props", "emit"]
+slug: "props-emit"
+draft: false
+---
+
+## 前言
+如果說 Vue 框架有什麼是讓我頭疼不已的，我覺得組件之間傳遞資料這一塊一定是排名第一。所以這篇文章同時也是寫給我自己的，希望能透過寫文章的方法梳理...
+
+## Props
+Props 是父傳子(上傳下)
+父組件 import 子組件後，在 `<Child />` 的標籤中透過 :屬性名 綁定資料。
+
+
+
+```vue showLineNumbers
+<script setup>
+import { ref } from "vue" 
+import Child from "./Child.vue"
+
+const money = ref(100)
+</script>
+
+<template>
+  <Child :money="money" />
+</template>
+
+```
+
+子組件也需要建立接收端，否則資料無法被正確讀取。
+
+```vue showLineNumbers
+<script setup>
+const props = defineProps(['money']);
+
+// 在 Javascript 中使用需透過 props.money
+console.log(props.money)
+</script>
+
+<template>
+  <!-- 在 template 中可以直接用變數名。 -->
+   {{ money }}
+</template>
+```
+
+## Emit
+
+Emit是子傳父，由下往上傳送資料。
+跟簡單的 Props 不同，這裡我們要記住幾個概念
+我們可以將子組件想像成地表的基地，父組件想像成近地軌道上的衛星
+子組件(基地)需要建設一個發射台與通信頻道，設定一個函數裡執行發送(emit)程序，而且emit程序中需要包含那個通信頻道跟要發送的資料，以送到正確的位置。
+
+```vue showLineNumbers
+<script setup>
+// 1. 建立基台與頻道 'update-money'
+const emit = defineEmits(['update-money']); // 建立基台與頻道 update-money
+const sentData = () => {
+  // 2. 執行發送程序：(頻道名稱, 資料)
+  emit('update-money', 50);
+};
+</script>
+
+<template> 
+    <button @click="sentData">回傳資料給父親</button> 
+</template>
+
+```
+
+父組件(衛星) 則需要在子組件的標籤位置，設定完全相同的頻道用來對接，用語法糖 @標註監聽的特定頻道，並且一個函數用來將接到的資料保存起來。
+
+```vue showLineNumbers
+<template> 
+    <Child @update-money="handleUpdateMoney" /> 
+</template>
+
+<script setup>
+import Child from "./Child.vue"; 
+const handleUpdateMoney = (val) => { 
+    console.log(`接收到基地台送出的資料: ${val}`); 
+} 
+</script>
+
+```
+
+## 總結
+
+記憶的訣竅很簡單，分成Props與Emit，記住：
+Props就是屬性名->defineProps(['屬性名'])，JS要加props，HTML可以直接用。
+Emit就是建基地台與頻道const emit=defineEmits(['頻道'])，將其發射出去emit('頻道', data)，衛星則用@監聽頻道，用函數將收到的data取得。
