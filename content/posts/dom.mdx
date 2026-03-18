@@ -1,0 +1,23 @@
+---
+title: "淺談 Virtual DOM"
+date: "2025-10-15"
+description: "淺談 Virtual DOM"
+tags: ["DOM", "Virtual DOM"]
+slug: "dom"
+draft: false
+---
+## 先初步理解 DOM
+DOM，全稱 Document Object Model，文件物件模型。簡單來說，是瀏覽器為了讓程式（如 Javascript）可以動態操作網頁內容，將 HTML 文件轉為樹狀結構（DOM tree）。
+
+原本 HTML 只是一長串的文字，經過轉換後可以將 HTML 的標籤作為一個個的節點，因為最終生成的結構層層相套，為樹狀的結構，因此又稱為 DOM tree。Javascript 可以對這些元素進行存取、修改、刪除等管理。
+
+DOM tree 完成以後，瀏覽器會根據 CSS 文件上寫的內容，生成一個 CSSOM tree，用來描述對應 HTML/DOM 的元素樣式規則，目的是添加網頁的外觀。
+
+最終階段是將 DOM tree 與 CSSOM tree 結合，產生 Render tree，瀏覽器加載 Render tree 的內容，計算元素的布局並進行繪製，最終完成畫面的渲染。於是我們得到一個可以透過程式動態操作 HTML 元素，具備 CSS 外觀的網頁。
+
+## 然後理解 Virtual DOM
+Virtual DOM，顧名思義是虛擬的 DOM，它不是一個真正的 DOM。Virtual DOM 本身是一個 Javascript 的物件資料結構，保存在 memory 中。
+
+為了避免每次互動都直接操作真實 DOM，導致不必要的 Repaint 與 Reflow，前端框架會在每次事件發生或資料異動時生成 Virtual DOM，並與舊的 Virtual DOM 進行比對（diff），找出需要更動的部分，最後再批次更新 DOM 中需要更動的元素。
+
+需要補充的一點是，有時候 Virtual DOM 的效能可能會優於直接重構 DOM，但 Virtual DOM 的真正意義在於「減少直接操作 DOM」。根本原因在於 DOM 操作的成本較高。

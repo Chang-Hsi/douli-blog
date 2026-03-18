@@ -1,0 +1,113 @@
+---
+title: "深入瞭解現代的登入機制(Session與JWT Token)"
+date: "2026-02-15"
+description: "深入瞭解現代的登入機制(Session與JWT Token)"
+tags: ["login", "Session", "JWT"]
+slug: "jwt-session"
+draft: false
+---
+## 前文
+目前的 Web 登入機制，是以 Session 與 JWT 作為當今主流的兩種認證機制。在比較兩者的區別之前，我們先探討兩者的定義、流程，以及一些應該被注意的點。
+
+## Session
+Session 登入機制，是將「登入的資訊(證明)保存在後端」的一種機制。換言之，每次發出需要憑證的 AJAX 請求時，後端都需要去 Session store 比對確認該憑證是否存在。
+
+具體地流程如下：
+
+前端在登入頁輸入帳號、密碼以後，點擊登入發送登入請求時（一般是 POST）。
+
+後端會先檢查該帳密是否已經註冊，如果已經註冊過，則後端會生成一組身分證明「Session id」，將證明保存在後端，常見的處理方式是保存在 Redis。因為後端會需要專門保存身分證明，這種機制被稱為 stateful。
+
+後端回傳登入請求時，會在回傳訊息中夾帶 Session id，但是一般來說為了資訊安全，後端會設定 HttpOnly 以限制 JS 讀取，例如這樣：
+
+`Set-Cookie: session_id=h123456789; HttpOnly; Secure; SameSite=Lax`
+
+並且在抵達瀏覽器時就將其存入到 Cookie 裡。
+
+前端在登入以後，執行需要身分證明的 AJAX 請求，比如想要瀏覽自己的個人帳戶頁，或者想要將商品加入購物車，這類的請求因為會在 header 中帶上瀏覽器的 Cookie 中的 Session id，後端接收到請求，針對收到的 Session id 在 Session store 做比對，如果該驗證通過，後端會回傳 success，使該請求通過。
+
+Session 的機制需要後端去做儲存的，因此可以透過將後端保存的身分證明刪除的方式，將用戶強制登出。然而同樣的，也因此，當需要被儲存的身分證明變很多時，效能不可避免會降低，如果系統需要做水平擴張時，Session 的認證與管理就會遇到許多擴展上的困難。
+
+補充一下，為了保證資訊安全，防止 CSRF（Cross-Site Request Forgery）的攻擊，可以在後端回傳 session id 時，除了 HttpOnly，還可以添加 SameSite=Lax。這句話的意思是：跨域跳轉時，通常禁止攜帶 Cookie，但是使用者主動點擊跳轉連結時，允許帶著 Cookie 跳轉。
+
+## JWT
+JWT 的登入機制，則是「後端不保存用戶的登入資料，登入的憑證儲存在前端。」的一種機制，這邊有一個容易讓人疑惑的點：
+
+> 後端如果不保存用戶資料，他如何知道這個人送來的 JWT 憑證是有效的？
+
+我們從 JWT 的流程開始說明：
+
+前端在登入頁輸入帳密並點擊登入後，AJAX 請求發送到後端，後端確認該用戶已經註冊，接下來後端的處理就是關鍵點。
+
+後端會將請求的 header 與 payload 組合起來，然後使用密鑰生成一段 signature（簽名檔），`header.payload.signature` 組合起來就是 JWT token，例如這樣：
+
+```js
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJuYW1lIjoi5Y-k5Y-kIiwiaWF0IjoxNzIxMDAxNjAwfQ.G41XQGNNJ5Tp88U48aXh4n0XtGkpPkQ3xK6j43_61gE309hzyTVyciG5v05aVIvvY9NrApYiQdvwlMMrjRPFVV8xunghtKKFMj3kPx93Ll8Pf6n-tDiL_NZYqcusrgwtb-EDza80hMG5PTu75ogTIfRKr4jC0_FZzLaMix07LaZReoUSionTWTxJlm8qJc0BAFXgsaGNs9oVhCXOg_jJmOfFZBP0tD3q4xaKp9MTtLRTtslAhoAjPczdnPqaWGcaS8OY11RUTvvxijA7W-mPRlmqt0Hd_XForETUFZRdCKsPQIiGjkavycPtdiViVihQKstHlT4afEzYvzWSeK1cnw
+````
+
+後端將 JWT token 回傳給前端，前端則將其保存在 LocalStorage 或 SessionStorage。接下來，每次發起需要憑證的 AJAX 請求時，在 API 的 Authorization 欄位中夾帶 `Bearer <JWT Token>` 即可。後端在接收請求時只需要檢查 JWT Token 的 signature 是否正確，就可以讓請求通過。這種前端儲存，後端不儲存憑證的機制，則被稱為 Stateless。
+
+JWT 的登入機制，屬於目前大型的微服務架構，或者 SSO 這種需要一鍵登入的網站中，屬於主流做法，因為它不需要考量當用戶數量過多時系統效能降低，或系統水平擴張時，系統管理用戶登入狀態的困難性。
+
+不過因為憑證是由前端儲存的，不能由後端操作將前端的登入狀態清除，只能等待 JWT token 過期失效。
+
+為了資安考量，如果 JWT 是透過 Cookie 傳遞，通常也會設定 HttpOnly、Secure 與 SameSite 等屬性來提高安全性。
+
+<table>
+  <thead>
+    <tr>
+      <th>比較項目</th>
+      <th>Session</th>
+      <th>JWT</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>登入狀態儲存位置</td>
+      <td>後端 (Session Store，如 Redis、Memory)</td>
+      <td>前端 (LocalStorage / SessionStorage / Cookie)</td>
+    </tr>
+    <tr>
+      <td>認證方式</td>
+      <td>透過 Session id 查找後端儲存的 session 資料</td>
+      <td>透過驗證 token 的 signature</td>
+    </tr>
+    <tr>
+      <td>架構類型</td>
+      <td>Stateful（伺服器需要保存狀態）</td>
+      <td>Stateless（伺服器不保存登入狀態）</td>
+    </tr>
+    <tr>
+      <td>登入憑證傳遞方式</td>
+      <td>通常透過 Cookie 自動夾帶 Session id</td>
+      <td>通常透過 Authorization: Bearer &lt;token&gt;</td>
+    </tr>
+    <tr>
+      <td>登出機制</td>
+      <td>刪除伺服器端的 Session 即可立即失效</td>
+      <td>通常需要等待 token 過期或建立黑名單機制</td>
+    </tr>
+    <tr>
+      <td>水平擴展</td>
+      <td>需要共享 Session Store（如 Redis）</td>
+      <td>天然支援水平擴展</td>
+    </tr>
+    <tr>
+      <td>安全風險</td>
+      <td>可能遭受 CSRF 攻擊</td>
+      <td>若存於 LocalStorage 可能遭受 XSS 攻擊</td>
+    </tr>
+    <tr>
+      <td>常見使用場景</td>
+      <td>傳統 Web 應用、單體架構網站</td>
+      <td>API 架構、微服務、SSO</td>
+    </tr>
+  </tbody>
+</table>
+
+<img
+  src="/images/jwt.gif"
+  alt="對比圖"
+  width="600"
+/>
+

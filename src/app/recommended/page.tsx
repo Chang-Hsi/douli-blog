@@ -91,6 +91,14 @@ export default function RecommendedPage() {
       image: "/images/web.webp",
       tags: ["Vue 3", "Vite", "Pinia", "i18n", "Tailwind CSS", "GitHub"],
       link: "https://chang-hsi.github.io/frontend-vue/" 
+    },
+    {
+      date: "2026 — PRESENT",
+      title: "Yippee Finance | 金融網站",
+      description: "這個專案是一個以財經資訊為核心的前端平台，主旨是把市場資料轉成「可閱讀、可比較、可探索」的視覺化介面。整體以 Nuxt 4 + Vue 3 建構，並搭配 Vuetify、Tailwind、Pinia，先用靜態資料完成可操作的產品形態，後續可平滑切換到真實資料來源",
+      image: "/images/fff.png",
+      tags: ["Vue 3", "Vite", "Pinia", "Nuxt 4", "Tailwind CSS", "Vuetify 4", "GitHub"],
+      link: "https://finance-ashen-kappa.vercel.app/" 
     }
   ];
 

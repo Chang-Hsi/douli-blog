@@ -1,0 +1,84 @@
+---
+title: "淺談 淺拷貝與深拷貝"
+date: "2025-11-14"
+description: "探索 淺拷貝與深拷貝。"
+tags: ["Vue", "淺拷貝", "深拷貝"]
+slug: "clone"
+draft: false
+---
+## 淺拷貝
+
+淺拷貝 **只能複製第一層資料**。如果物件中有巢狀結構，內部物件仍然會共用同一個 reference。
+
+如果對該物件做複製並修改巢狀資料，原本的物件也會受到影響。
+
+因此，在實務上淺拷貝通常只適合用於只有一層的資料，例如陣列或單層物件。
+
+常見寫法：
+
+```tsx showLineNumbers
+const newList = [...oldList];
+const newObj = { ...oldObj };
+````
+
+---
+
+### Vue 應用場景
+
+當你在 Vue 的 `computed` 中想要對一個簡單的陣列進行排序 (`.sort()`) 時，為了不影響原始資料，我們通常會先做淺拷貝。
+
+```tsx showLineNumbers
+const oldList = [3, 2, 5, 1, 8, 9];
+const newList = computed(() => {
+  return [...oldList].sort((a, b) => a - b);
+});
+```
+
+如此 `oldList` 的資料不會被 `.sort()` 修改，成功避免改動原始資料。
+
+---
+
+## 深拷貝
+
+核心概念是：
+
+**完全複製，從此各過各的。**
+
+當資料結構比較複雜（例如包含多層物件），但又需要對資料進行修改，同時又不希望原本的資料被更動時，就會使用深拷貝。
+
+深拷貝會 **遞迴複製整個物件結構**，因此所有巢狀資料都會建立新的 reference。
+
+```tsx showLineNumbers
+const newObj = structuredClone(oldObj);
+```
+
+---
+
+## Vue 應用場景
+
+例如在權限管理頁面中，我們可能需要：
+
+* 修改使用者權限
+* 支援「重設」或「恢復初始設定」
+* 只有在點擊「儲存」時才真正更新資料
+
+這時就可以先對原始資料做深拷貝，再在拷貝後的資料上操作。
+
+```tsx showLineNumbers
+const user = reactive({
+  name: "小明",
+  addr: {
+    city: "桃園市",
+    district: "中正路",
+  },
+});
+
+const shallowCloneUser = { ...user }; // 不可行，因為只有第一層
+const deepCloneUser = structuredClone(user);
+
+deepCloneUser.name = "小王";
+deepCloneUser.addr.city = "台北市";
+deepCloneUser.addr.district = "大安區";
+```
+
+透過深拷貝，我們可以確保修改 `deepCloneUser` 時，不會影響原本的 `user`。

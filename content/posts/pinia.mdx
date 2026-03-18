@@ -1,0 +1,178 @@
+---
+title: "淺談 Pinia"
+date: "2025-10-15"
+description: "淺談 Pinia 狀態管理工具的基礎與進階應用"
+tags: ["Pinia", "Vue"]
+slug: "pinia"
+draft: false 
+---
+
+## 前言
+Pinia 是 Vue 框架專屬的狀態管理工具，它能對多個組件的 state 進行集中管理，有效解決跨組件傳遞繁瑣、資料流難以維護的問題。
+
+## 組成
+Pinia 捨棄了 Vuex 較為冗長的 `mutation`，其核心組成精簡為三部分：
+- **Store (State)**：定義與儲存資料的倉庫。
+- **Getters**：基於 state 的計算屬性，性質上類似於 `computed`。
+- **Actions**：定義更新 state 的方法，支援同步或非同步（async/await）行為。
+
+---
+
+## 使用規範
+在 Pinia 中，開發風格與 `<script setup>` 非常相近：
+
+### Store 端定義
+1. **引用 Hook**：頂部需 import `defineStore` 以及 Vue 的 `ref`, `computed` 等。
+2. **命名慣例**：匯出一個以 `use` 開頭、`Store` 結尾的函式，例如 `useUserStore`。
+3. **資料定義**：State 使用 `ref` 或 `reactive` 宣告。
+4. **計算屬性**：Getter 使用 `computed`，需注意**不可直接修改 state**，僅能回傳計算後的新值。
+5. **方法定義**：Action 宣告為一般的 `function`。
+6. **對外暴露**：底部必須透過 `return` 將 state, getters, actions 傳出。
+   > **補充**：變數命名應盡量避免與組件內部的局部變數重複。
+
+### 組件端呼叫
+1. **解構工具**：需 import `storeToRefs` 用以保持解構資料的響應性。
+2. **創建實例**：`const authStore = useAuthStore()`。
+3. **資料解構**：State 與 Getters 需透過 `storeToRefs` 處理：
+   `const { memberName } = storeToRefs(authStore)`。
+4. **方法獲取**：Actions 則**無需**透過 `storeToRefs`，可直接解構使用。
+
+---
+
+## 範例時間
+
+### 基本題：計數器功能 (Counter)
+實作數字加減與兩倍數值的計算屬性。
+
+```javascript
+// stores/counter.js
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
+
+export const useCounterStore = defineStore("counter", () => {
+  // --- State ---
+  const counter = ref(0);
+
+  // --- Getter ---
+  const doubleCounter = computed(() => {
+    return counter.value * 2;
+  });
+
+  // --- Actions ---
+  function increment() {
+    counter.value++;
+  }
+  function decrement() {
+    counter.value--;
+  }
+
+  return { counter, doubleCounter, increment, decrement };
+});
+
+```
+
+```vue
+<script setup>
+import { storeToRefs } from "pinia";
+import { useCounterStore } from "@/store/counter.js";
+
+const counterStore = useCounterStore();
+
+// 解構 State 與 Getter
+const { counter, doubleCounter } = storeToRefs(counterStore);
+// 解構 Action
+const { increment, decrement } = counterStore;
+</script>
+
+<template>
+  <div>
+    <span>當前數值: {{ counter }}</span>
+    <span>兩倍數值: {{ doubleCounter }}</span>
+    <button @click="increment">+1</button>
+    <button @click="decrement">-1</button>
+  </div>
+</template>
+
+```
+
+---
+
+### 進階題：登入功能 (Auth)
+
+實作非同步 API 呼叫與登入狀態切換。
+
+```javascript
+// stores/auth.js
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
+import axios from "axios";
+
+export const useAuthStore = defineStore("auth", () => {
+  // --- State ---
+  const memberName = ref("");
+  const isLogined = ref(false);
+
+  // --- Getter ---
+  const memberNameShowOnScreen = computed(() => {
+    if (isLogined.value === false) {
+      return "訪客";
+    } else {
+      return memberName.value;
+    }
+  });
+
+  // --- Action ---
+  async function loginRequest(userParam, pwdParam) {
+    try {
+      const loginParams = {
+        username: userParam,
+        password: pwdParam
+      };
+      const res = await axios.post("api_url", loginParams);
+      
+      memberName.value = res.data.username;
+      isLogined.value = true;
+    } catch (error) {
+      console.error("登入失敗：", error.message);
+    }
+  }
+
+  return { memberName, isLogined, memberNameShowOnScreen, loginRequest };
+});
+
+```
+
+```vue
+<script setup>
+import { ref } from "vue";
+import { storeToRefs } from "pinia";
+import { useAuthStore } from "@/store/auth.js";
+
+const authStore = useAuthStore();
+const { memberNameShowOnScreen } = storeToRefs(authStore);
+const { loginRequest } = authStore;
+
+const user = ref("");
+const pwd = ref("");
+</script>
+
+<template>
+  <div>
+    <p>登入者: {{ memberNameShowOnScreen }}</p>
+    <input type="text" v-model="user" placeholder="帳號" />
+    <input type="password" v-model="pwd" placeholder="密碼" />
+    <button @click="loginRequest(user, pwd)">登入</button>
+  </div>
+</template>
+
+```
+
+---
+
+## 總結
+
+Pinia 的 **Setup Store** 模式為 Vue 3 開發者提供了極佳的靈活性，它讓狀態管理邏輯與組件邏輯高度統一。在使用過程中，請務必記住以下關鍵點：
+
+1. **響應性陷阱**：解構 State 與 Getters 時，請永遠記得包裹 `storeToRefs()`，否則畫面將不會隨資料變動。
+2. **純粹性**：保持 Getters 的純粹，僅做資料轉換而不修改原始資料；將邏輯與非同步行為封裝在 Actions 中。
+3. **模組化**：根據功能拆分多個 Store，不僅能保持代碼整潔，也能享受更好的 TypeScript 支援與自動補全。
