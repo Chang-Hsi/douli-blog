@@ -1,0 +1,59 @@
+---
+title: "深度探討DOM與Virtual DOM"
+date: "2025-10-16"
+description: "深度探討DOM與Virtual DOM"
+tags: ["DOM", "Virtual DOM"]
+slug: "VirtualDom"
+draft: false
+---
+
+### 1. 為什麼需要 Virtual DOM？
+一言以蔽之，需要Virtual DOM的原因在於操作DOM太貴了。為了優化渲染效能，並且簡化開發者的流程，因此現代許多框架引入Virtual DOM。
+
+### 2. DOM 是什麼？
+DOM，全名Document Object Model，文件物件模型。它是瀏覽器將HTML文本(純字串)轉化為可以用程式(比如Javascript)進行操作的一種結構化表現方式。我個人從開發者的角度上習慣這樣理解：DOM === DOM Tree，原因如下：
+
+DOM Tree的意思是，瀏覽器為了將HTML文本轉為可以被JS之類的程式動態操作，因此將文本中的Tag, 文字, 屬性等進行解析，最終成為層遞的節點，這些節點組成了樹狀結構。
+從開發者的角度上，我們從DevTools看到的內容就是DOM Tree，而有點出人意料的是，影響SEO排名的重要因素，也是DOM Tree而不是HTML純字串。因此，只從使用的角度，將DOM簡單理解為DOM Tree我認為是可以的。
+資料來源: https://developers.google.com/search/docs/fundamentals/how-search-works?hl=zh-tw
+
+### 3. DOM 的效能瓶頸在哪裡？
+這需要先理解為甚麼操作DOM很「貴」？
+前文提到，DOM可以被理解為DOM Tree，它是HTML文本經過瀏覽器轉化而成的樹狀結構，目的是可以被JS之類的程式動態操作。但DOM Tree轉換完成以後，還需要與CSSOM Tree結合成Render Tree，經過Layout與Paint以後，才成為使用者在瀏覽器上可以看見與操作的頁面。
+
+當DOM被操作，發生更新時，從用戶的角度上是網頁上的內容發生變更，而從瀏覽器的角度上，則是觸發重繪(Repaint)與回流(Reflow)，意思是DOM Tree上的節點發生變動，導致外觀，比如顏色或陰影需要更新(Repaint)，或者Layout與重新計算(Reflow)，這其中又以Layout需要重算所需要的效能更高。
+因此，頻繁操作DOM，會導致瀏覽器反覆進行Reflow與Repaint，其所造成的效能問題，是現代框架會使用Virtual DOM的作法代替直接操做DOM的主要原因。
+
+### 4. Virtual DOM 是什麼？
+Virtual DOM，顧名思義是虛擬DOM，本質上它只是一個JS的物件結構資料。我們可以簡單將Virtual DOM理解為一個設計藍圖。
+在React, Vue等現代框架中，文件在編譯階段，會將HTML(更精確地說，Vue是template，React is jsx)轉為一個Render Function(生成Virtual DOM的函式)。
+在瀏覽器初始化，也就是頁面跑起來時，該Render Function產出的物件資料結果會被儲存在記憶體中，這個物件資料，就是Virtual DOM，在Vue中也稱之為VNode。
+
+### 5. Virtual DOM 是如何運作的？
+瀏覽器初始化頁面，將Render Function的資料保存在記憶體以後，這份Virtual DOM，可以稱之為原始藍圖。當用戶操作網頁導致畫面出現變化時，此時的行為是Virtual DOM運作的關鍵點：
+1)當資料(state)發生變更時，Vue/React會被觸發，再次執行Render Function，於是得到一份新的物件資料(New Virtual DOM, 這裡簡稱New VNode)，這裡需要提到，這份新藍圖同樣是由完整的HTML得出的物件結構，而不是只針對該變更部分。
+2)這時記憶體中會存在原始VNode與New VNode兩個藍圖。然後Vue/React在JS層，會使用一種叫做Diff的演算法，對兩張藍圖逐層進行比對，沿途收集所有不相同的元素，當比對全部資料完成，並且計算出最新變更結果以後，瀏覽器才會一次性的執行指令，統一更新DOM。
+
+### 6. Diff 演算法在做什麼？
+Diff 演算法遵守最小修改路徑的原則，因此其運行核心如下
+* 只在同層做比對，
+* 如果標籤不同，例如舊VNode是 `<span>`，新VNode是 `<div>` ﹐則直接刪除。如果標籤一樣，則指會去比對裡面的屬性等。
+* 當結構為清單，例如v-for，如果有key則會遵照key的資料進去裡面做比對。但是如果沒有設定key，或者有設定key但是使用index，當發生變更，比如清單新增或刪除其中的資料時，會導致後面的資料全部被視為新資料，需要全部重新渲染。
+
+### 7. Virtual DOM 的優點是什麼？
+* 效能優化: 這是最顯而易見的優化，透過該機制，可以等到新舊VNode對比結束，Diff計算並列出所有要更新的元素後，批次處理，減少瀏覽器Repaint, Reflow的次數。
+* 內建防禦: 現代框架在執行將Virtual DOM轉為真實DOM時，通常會執行XSS等安全過濾。
+
+### 8. Virtual DOM 的缺點是什麼？
+* 為了實現Virtual DOM，會需要額外的記憶體去儲存新舊的Virtual DOM。
+* 針對某些相當複雜的結構，使用Diff演算法去對比資料，會比單純操作DOM元素需要更多的效能。
+
+### 9. 實務上什麼情況適合使用 Virtual DOM？
+需要頻繁更新UI，資料頻繁更動的情形，適合使用 Virtual DOM。
+
+### 10. 總結
+綜上所述，揭開Virtual DOM神秘的面紗後，我們可以知道，它本質上只是一個JS的物件結構資料。是根據框架生成的Render Function產生的設計藍圖。其目的則是優化更新畫面資料的所需要流程。解決操作真實 DOM太貴(Reflow 與 Repaint)的問題。
+
+然而，Virtual DOM 並非萬能解。它以額外的記憶體與計算成本，換取更穩定與可維護的更新機制。在實務上，它特別適用於資料頻繁變動、UI 結構複雜的場景，而在簡單或靜態頁面中，未必能帶來明顯優勢。
+
+也正因如此，理解 Virtual DOM 的本質，不只是理解一項技術，更是理解現代前端框架背後的設計思維：將「操作畫面」轉變為「描述狀態」，讓系統負責處理更新細節，而開發者則專注在資料與邏輯本身。

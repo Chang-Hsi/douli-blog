@@ -1,0 +1,68 @@
+---
+title: 技術文章｜探討 MVVM
+date: "2025-10-18"
+description: 深入理解 MVVM 架構、運作原理與實務應用
+tags: ["MVVP", "Vue"]
+slug: "MVVP"
+draft: false 
+---
+
+### 1. 為什麼需要MVVM？
+傳統開發的架構MVC的特點是將Model(數據與邏輯)與View(UI)分離，Controller監聽View的操作行為，例如點擊事件，通知Model執行程式，再將結果回傳並更新View。然而這種作法在需要大量操作介面的情形，會讓代碼中充滿document.getElementById與手動更新程式碼的方法，寫法繁瑣，容易出現錯誤，而且難以維護。
+因此，現代的框架中通常採用MVVM的架構設計，它能保證View專注在畫面排版，Model專注在數據與業務邏輯，ViewModel可以做到處理兩者的雙向綁定與自動更新，達到數據驅動的效果。
+
+### 2. MVVM 是甚麼?
+MVVM，全稱是Model-View-ViewModel，他的核心原則如前文提到，是將「畫面外觀」與「程式邏輯」分離開，透過「自動同步」方式讓兩者溝通。
+* Model 裡包含資料，與處理資料的方法等實際要運作的功能。以計時器為例，Modal裡只會包含計時器的資料(Counter)，與計時行為(setInterval, Counter++)。
+* View 則專注在畫面外觀上，比如使用一張碼表的圖片作為計時器的外觀，圖片中設定要顯示的時間資訊，添加兩顆按鈕作為計時開始與終止之類的。
+* ViewModal 作為兩者的橋樑，負責從 View 中自動獲取資料(GET)，送到Modal中讓他運行處理，最後將結果自動更新到畫面上(SET)。
+
+### 3. MVVM 是如何運作的?
+理解了MVVM的定義以後應該能夠明白，對開發者來說，這個設計架構最重要的一點就是它的「自動化」功能，這背後的運作原理，稱之為「數據響應式(Reactivity)」。這裡會用 Vue 2 與 Vue 3 的做法來解釋 MVVM 背後是如何運行的:
+* Vue 2 使用 Object.defineProperty的方式實現MVVM，簡單來說，在數據初始化時，它會掃描整個文件並且對數據進行傳化，給每個數據添加getter與setter的屬性，因此在資料被存取到時，它能夠「攔截」到這個存取動作，並且通知畫面。
+* Vue 3 使用 Proxy的方式實現MVVM，其實現響應式更新的原理與 Vue 2類似，區別在於它的效能更好，能夠攔截的屬性更多，監聽到更複雜的資料結構。這篇文章不對兩者具體的區別做講述，會在之後的技術文章中作探討。
+
+### 4. MVVM 的優點是什麼?
+MVVM的優點相較傳統MVC可分成以下幾點:
+1) 代碼更簡潔：減少大量 document.getElementById與對應操作行為帶來的好處顯而易見，開發者無須為了設置連接Model與View的機制而設定大量繁瑣代碼，這使代碼的可閱讀性提升，複雜度下降，維護難度下降，出錯可能性下降。
+2) 關注點分離：開發者可專注在UI與Model，將UI與Model分離的好處明顯，UI的開發可不再需要同時考量Model，邏輯的部分也可以專注在邏輯上，與UI的連結自有數據響應式的ViewModel自動進行獲取與更新。
+3) 共用元件的可行性：因為MVVM的耦合性更低，開發者甚至可以將ViewModel的部分抽取出來，做成共用的元件，多個組件要使用時可以直接呼叫該元件。
+
+### 5. 簡單的範例
+這裡會用 Vue3 Composition API 的作法進行示範:
+
+```vue
+<template>
+{{ counter }}
+<button @click=startCounter>start counter</button >
+<button @click=stopCounter>stop counter</button >
+</template>
+<script setup>
+import { ref } from 'vue';
+// ViewModel: 負責管理狀態 (State)
+const counter = ref(0)
+cons timmer = null;
+ 
+// Model: 負責資料與業務邏輯
+const startCounter = () => {
+    if(timer) return;
+    timer = setInterval(()=>{ counter.value ++ }, 1000)
+}
+const stopCounter = () => {
+clearInterval(timer);
+timer = null
+}
+</script>
+```
+
+### 6. 哪種情況適合使用 MVVM?
+目前絕大多數情形都適合使用MVVM，專案如果有以下需求都適用該模式:
+* 高度互動UI：承前文，數據驅動帶來的優勢相較於MVC是非常明顯的。
+* 長期維護的專案：邏輯與畫面分開可保證未來維護時不會出現初一髮而動全身的情形
+* 需要自動化測試：ViewModel的可測試性使自動化測試具備可行性。
+* 跨平台開發：同一個邏輯可以共用在不同平台，例如使用AJAX處理JSON資料，該邏輯在IOS，安卓，網頁端都是可以通用。
+
+### 7. 總結
+綜上所述，MVVM 的核心價值在於「以數據為中心」來驅動畫面的變化，透過 ViewModel 將原本需要手動處理的同步流程自動化，讓開發者不再需要頻繁地操作 DOM 或維護複雜的狀態更新邏輯，開發者可以更專注於業務邏輯本身。
+ 
+也正因如此，現代前端框架（如 Vue、React 搭配狀態管理）大多都圍繞著類似 MVVM 的理念設計。在實務開發中，理解 MVVM 不僅能幫助我們更好地使用這些框架，也能在面對複雜應用時，建立更清晰且可擴展的架構。
